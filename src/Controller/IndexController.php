@@ -7,9 +7,13 @@ use Symfony\Component\Routing\Annotation\Route;
 
 class IndexController extends AbstractController
 {
-    #[Route('/{name}', name: 'app_home')] // Assurez-vous que le paramètre de route {name} est défini
-    public function home(string $name): Response
+    #[Route('/', name: 'app_home')] // Utilisation des attributs PHP pour la route
+    public function home(): Response
     {
-        return $this->render('index.html.twig', ['name' => $name]);
+        // Définir les articles
+        $articles = ['Article 1', 'Article 2', 'Article 3'];
+
+        // Appel de la méthode render avec une syntaxe correcte
+        return $this->render('articles/index.html.twig', ['articles' => $articles]);
     }
 }
