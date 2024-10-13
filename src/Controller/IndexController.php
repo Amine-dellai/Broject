@@ -3,20 +3,19 @@
 namespace App\Controller;
 
 use App\Entity\Article;
+use App\Entity\Category;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\Form\Extension\Core\Type\TextType;
-use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Form\ArticleType;
+use App\Form\CategoryType;
 
 class IndexController extends AbstractController
 {
     private EntityManagerInterface $entityManager;
 
-    // Injection de l'EntityManager via le constructeur
     public function __construct(EntityManagerInterface $entityManager)
     {
         $this->entityManager = $entityManager;
@@ -25,43 +24,59 @@ class IndexController extends AbstractController
     #[Route('/', name: 'homepage')]
     public function home(): Response
     {
-        
         $articles = $this->entityManager->getRepository(Article::class)->findAll();
-
-       
         return $this->render('articles/index.html.twig', ['articles' => $articles]);
     }
 
     #[Route('/article/save', name: 'article_save', methods: ['GET'])]
     public function save(): Response
     {
-        
         $article = new Article();
         $article->setNom('Article 1');
         $article->setPrix(1000);
-
-        // Sauvegarde de l'article
         $this->entityManager->persist($article);
         $this->entityManager->flush();
-
         return new Response('Article enregistré avec id ' . $article->getId());
     }
 
     #[Route('/article/new', name: 'new_article', methods: ['GET', 'POST'])]
-    public function new(Request $request, EntityManagerInterface $entityManager): Response
+    #[Route('/article/new', name: 'new_article', methods: ['GET', 'POST'])]
+    public function new(Request $request): Response
     {
         $article = new Article();
         $form = $this->createForm(ArticleType::class, $article);
-        
+        $form->handleRequest($request);
+    
+        if ($form->isSubmitted() && $form->isValid()) {
+            $category = $article->getCategory(); // Récupérer la catégorie associée
+            if (!$category) {
+                // Vous pouvez ajouter un message d'erreur ici ou gérer le cas où la catégorie est invalide
+                throw $this->createNotFoundException('Catégorie non trouvée.');
+            }
+    
+            $this->entityManager->persist($article);
+            $this->entityManager->flush();
+            return $this->redirectToRoute('homepage');
+        }
+    
+        return $this->render('articles/new.html.twig', [
+            'form' => $form->createView(),
+        ]);
+    }
+    #[Route('/category/newCat', name: 'new_category', methods: ['GET', 'POST'])]
+    public function newCategory(Request $request): Response
+    {
+        $category = new Category();
+        $form = $this->createForm(CategoryType::class, $category);
         $form->handleRequest($request);
         
         if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->persist($article);
-            $entityManager->flush();
-            return $this->redirectToRoute('homepage'); // Change to 'homepage' or the correct route
+            $this->entityManager->persist($category);
+            $this->entityManager->flush();
+            return $this->redirectToRoute('homepage');
         }
 
-        return $this->render('articles/new.html.twig', [
+        return $this->render('articles/newCategory.html.twig', [
             'form' => $form->createView(),
         ]);
     }
@@ -69,15 +84,10 @@ class IndexController extends AbstractController
     #[Route('/article/{id}', name: 'article_show', methods: ['GET'])]
     public function show(int $id): Response
     {
-        // Récupérer l'article par ID
         $article = $this->entityManager->getRepository(Article::class)->find($id);
-
-        // Vérifier si l'article existe
         if (!$article) {
             throw $this->createNotFoundException('Article non trouvé');
         }
-
-        // Rendre la vue avec l'article
         return $this->render('articles/show.html.twig', [
             'article' => $article,
         ]);
@@ -85,27 +95,20 @@ class IndexController extends AbstractController
 
     #[Route('/article/edit/{id}', name: 'edit_article', methods: ['GET', 'POST'])]
     public function edit(Request $request, int $id): Response
-{
-    // Récupérer l'article à modifier
-    $article = $this->entityManager->getRepository(Article::class)->find($id);
+    {
+        $article = $this->entityManager->getRepository(Article::class)->find($id);
+        if (!$article) {
+            throw $this->createNotFoundException('Article non trouvé');
+        }
 
-    // Vérifier si l'article existe
-    if (!$article) {
-        throw $this->createNotFoundException('Article non trouvé');
-    }
+        $form = $this->createForm(ArticleType::class, $article);
+        $form->handleRequest($request);
 
-    // Création du formulaire pour modifier l'article
-    $form = $this->createForm(ArticleType::class, $article);
-    $form->handleRequest($request);
+        if ($form->isSubmitted() && $form->isValid()) {
+            $this->entityManager->flush();
+            return $this->redirectToRoute('homepage');
+        }
 
-    // Gestion de la soumission du formulaire
-    if ($form->isSubmitted() && $form->isValid()) {
-        $this->entityManager->flush(); // Sauvegarde des modifications
-
-        // Redirection après la modification de l'article
-        return $this->redirectToRoute('homepage'); // Redirige vers la page d'accueil ou à la liste des articles
-    }
-        // Rendre la vue avec le formulaire
         return $this->render('articles/edit.html.twig', [
             'form' => $form->createView(),
         ]);
@@ -115,8 +118,6 @@ class IndexController extends AbstractController
     public function delete(Request $request, int $id): Response
     {
         $article = $this->entityManager->getRepository(Article::class)->find($id);
-
-        // Vérifier si l'article existe
         if (!$article) {
             throw $this->createNotFoundException('Article non trouvé');
         }
@@ -124,7 +125,6 @@ class IndexController extends AbstractController
         $this->entityManager->remove($article);
         $this->entityManager->flush();
 
-        // Redirection après la suppression de l'article
-        return $this->redirectToRoute('homepage'); // Redirige vers la page d'accueil
+        return $this->redirectToRoute('homepage');
     }
 }
