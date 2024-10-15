@@ -1,5 +1,3 @@
-# config/routes.yaml
-
 homepage:
     path: /
     controller: App\Controller\IndexController::home
@@ -23,7 +21,18 @@ edit_article:
 delete_article:
     path: /article/delete/{id}
     controller: App\Controller\IndexController::delete
+    methods: ['POST']
 
 new_category:
     path: /category/newCat
     controller: App\Controller\IndexController::newCategory
+
+# Route pour la recherche d'articles par catégorie
+article_par_cat:
+    path: /art_cat/
+    controller: App\Controller\IndexController::articlesParCategorie
+
+# Route pour la recherche d'articles par prix
+article_par_prix:
+    path: /art_prix/
+    controller: App\Controller\IndexController::articlesParPrix
